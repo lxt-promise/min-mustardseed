@@ -8,7 +8,7 @@ import CopyBtn from '@/components/CopyBtn'
 import './index.scss'
 
 /**
- * 趣味小测试 v3（小程序版）
+ * 趣味小测（小程序版）
  *  - 颜色性格：6 个预设 + 中文颜色名输入（模糊匹配 13 大类）
  *  - 笑一个吧：24 条中文笑话随机
  *  - 人生锦囊：36 条人生建议卡

@@ -4,7 +4,6 @@ export default defineAppConfig({
     'pages/pomodoro/index',
     'pages/todo/index',
     'pages/workdays/index',
-    'pages/verse/index',
     'pages/picker/index',
     'pages/music/index',
     'pages/quiz/index',
@@ -35,12 +34,6 @@ export default defineAppConfig({
         text: '待办',
         iconPath: 'assets/tabbar/todo.png',
         selectedIconPath: 'assets/tabbar/todo-active.png',
-      },
-      {
-        pagePath: 'pages/verse/index',
-        text: '金句',
-        iconPath: 'assets/tabbar/verse.png',
-        selectedIconPath: 'assets/tabbar/verse-active.png',
       },
       {
         pagePath: 'pages/more/index',

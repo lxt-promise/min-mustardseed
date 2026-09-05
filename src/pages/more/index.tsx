@@ -6,7 +6,7 @@ import { copyText } from '@/utils/clipboard'
 import logoImg from '@/assets/logo.png'
 import './index.scss'
 
-/** 非 tabBar 工具目录（tab 页：首页/待办/金句 不重复列出） */
+/** 非 tabBar 工具目录（tab 页：首页/待办/更多 不重复列出） */
 const TOOLS = [
   { path: '/pages/pomodoro/index', icon: '🍅', name: '番茄钟', desc: '专注计时 · 三种模式', color: 'from-rose-400 to-orange-400' },
   { path: '/pages/workdays/index', icon: '📅', name: '工作日计算', desc: '双休/单休/大小周', color: 'from-indigo-400 to-mint-500' },

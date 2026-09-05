@@ -42,14 +42,6 @@ const officeTools: Tool[] = [
 
 const funTools: Tool[] = [
   {
-    path: '/pages/verse/index',
-    name: '治愈金句',
-    desc: '随机圣经经文 · 中英对照',
-    color: 'from-indigo-400 to-violet-500',
-    badge: '✨ 推荐',
-    icon: '✨',
-  },
-  {
     path: '/pages/picker/index',
     name: '纠结人神器',
     desc: '吃啥？选啥？一键帮你决定',
@@ -75,7 +67,7 @@ const funTools: Tool[] = [
 ]
 
 // TabBar 页面用 switchTab，普通页面用 navigateTo
-const TabBarPages = ['/pages/home/index', '/pages/todo/index', '/pages/verse/index', '/pages/more/index']
+const TabBarPages = ['/pages/home/index', '/pages/todo/index', '/pages/more/index']
 
 function navigateToPage(path: string) {
   if (TabBarPages.includes(path)) {
