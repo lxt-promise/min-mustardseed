@@ -1,0 +1,16 @@
+/* 音乐小站 */
+.music-cover {
+  transition: transform 0.3s ease;
+}
+.music-cover-active {
+  transform: scale(1.05);
+}
+
+/* 封面旋转动画（保留接口，未启用） */
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.music-spin {
+  animation: rotate 8s linear infinite;
+}

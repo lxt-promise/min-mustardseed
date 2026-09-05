@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===================== 全局（page 替代 html/body） ===================== */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+page {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
+  /* 网页版多重 radial 背景简化为线性渐变（WXSS 多重背景支持不稳） */
+  background: linear-gradient(180deg, #f2fbf6 0%, #f5faf6 40%, #ffffff 100%);
+  color: #134e3a;
+  font-size: 28rpx;
+}
+
+/* ===================== 行数限制（作用在 Text 上） ===================== */
+.line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ===================== 按压反馈（小程序 hoverClass 机制） ===================== */
+/* 用法：<View hoverClass="view-press" hoverStayTime="80"> */
+.view-press { opacity: 0.85; transform: scale(0.98); }
+.btn-press { transition: transform 0.1s ease; }
+
+/* ===================== 卡片动画 ===================== */
+@keyframes shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-2px, 1px) rotate(-1.5deg); }
+  40% { transform: translate(2px, -1px) rotate(1.5deg); }
+  60% { transform: translate(-1px, 2px) rotate(-1deg); }
+  80% { transform: translate(1px, -2px) rotate(1deg); }
+}
+.animate-shake { animation: shake 0.35s ease-in-out infinite; }
+
+@keyframes popIn {
+  0% { transform: scale(0.7); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop { animation: popIn 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.35s ease-out both; }
+
+/* ===================== 金句卡片背景纹理 ===================== */
+.verse-card {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(133, 219, 182, 0.25), transparent 55%),
+    linear-gradient(135deg, #ffffff 0%, #f2fbf6 100%);
+}

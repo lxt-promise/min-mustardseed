@@ -1,0 +1,7 @@
+/* 待办清单 */
+.todo-row {
+  transition: all 0.2s ease;
+}
+.todo-row-active:active {
+  transform: scale(0.99);
+}

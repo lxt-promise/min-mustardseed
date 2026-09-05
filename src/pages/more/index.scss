@@ -1,0 +1,13 @@
+/* 更多 */
+.more-feedback-btn {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  line-height: inherit;
+  border-radius: 0;
+  font-size: inherit;
+
+  &::after {
+    border: none;
+  }
+}
