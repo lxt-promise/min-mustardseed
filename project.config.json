@@ -2,7 +2,7 @@
   "miniprogramRoot": "dist/",
   "compileType": "miniprogram",
   "projectname": "mustard-seed",
-  "appid": "wx8502a43df2ce4e1f",
+  "appid": "wx790104ee34933212",
   "libVersion": "3.8.10",
   "setting": {
     "es6": true,
