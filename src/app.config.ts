@@ -44,4 +44,5 @@ export default defineAppConfig({
     ],
   },
   permission: {},
+  lazyCodeLoading: 'requiredComponents',
 })
