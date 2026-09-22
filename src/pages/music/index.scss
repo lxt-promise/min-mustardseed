@@ -1,16 +1,17 @@
-/* 音乐小站 */
-.music-cover {
-  transition: transform 0.3s ease;
-}
-.music-cover-active {
-  transform: scale(1.05);
+/* 音乐小站 —— 页面辅助样式（布局与配色均走 Tailwind 工具类） */
+
+/* 通栏装饰光斑：WXSS 同时写 -webkit 前缀保证模糊生效 */
+.music-blob {
+  -webkit-filter: blur(48px);
+  filter: blur(48px);
 }
 
-/* 封面旋转动画（保留接口，未启用） */
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* 通栏内半透明圆按钮按压态 */
+.ctrl-btn-hover {
+  background-color: rgba(255, 255, 255, 0.35) !important;
 }
-.music-spin {
-  animation: rotate 8s linear infinite;
+
+/* 白色主播放按钮按压态 */
+.main-btn-hover {
+  transform: scale(0.96);
 }

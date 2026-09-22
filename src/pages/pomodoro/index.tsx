@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, Switch, Slider, Button } from '@tarojs/components'
+import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { storage } from '@/utils/storage'
 import { playFinishChime } from '@/utils/audio'
 import './index.scss'
 
 /**
- * 番茄钟 v1（小程序版）
+ * 番茄钟 v2（小程序版，对齐网页版设计）
  *  - 三种模式：专注 / 短休息 / 长休息
- *  - 自定义时长、提示音、自动切换
- *  - 每日番茄完成数 + 累计统计
+ *  - 细圆环倒计时 + 圆形控制按钮
+ *  - 今日 / 累计两栏统计
+ *  - 数字设置面板：时长、每日目标、提示音、自动下一阶段
  */
 
 type Mode = 'focus' | 'short' | 'long'
@@ -33,10 +34,10 @@ const DEFAULT_SETTINGS: Settings = {
   dailyGoal: 8,
 }
 
-const MODES: { key: Mode; label: string; tip: string; icon: string }[] = [
-  { key: 'focus', label: '专注', tip: '全情投入', icon: '🍅' },
-  { key: 'short', label: '短休息', tip: '站起来动一下', icon: '☕' },
-  { key: 'long', label: '长休息', tip: '喝杯茶', icon: '🌿' },
+const MODES: { key: Mode; label: string; tip: string }[] = [
+  { key: 'focus', label: '专注', tip: '全情投入' },
+  { key: 'short', label: '短休息', tip: '站起来动一下' },
+  { key: 'long',  label: '长休息', tip: '喝杯茶 ☕' },
 ]
 
 const pad = (n: number) => String(Math.max(0, Math.floor(n))).padStart(2, '0')
@@ -88,16 +89,6 @@ const Pomodoro: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
-  // 后台计时修正：进入前台时若倒计时已过完则直接收尾
-  useEffect(() => {
-    const onShow = () => {
-      // 仅记录日志，不主动干预计时（小程序后台 setInterval 会暂停）
-      // console.log('[Pomodoro] app show')
-    }
-    Taro.onAppShow(onShow)
-    return () => Taro.offAppShow(onShow)
-  }, [])
-
   function finishOne() {
     if (intervalRef.current) clearInterval(intervalRef.current)
     playFinishChime(settings.soundOn)
@@ -126,32 +117,14 @@ const Pomodoro: React.FC = () => {
   }
 
   function toggleRun() {
-    if (running) {
-      setRunning(false)
-    } else {
-      setRunning(true)
-    }
+    setRunning((r) => !r)
   }
 
   function resetTimer() {
-    if (running) {
-      Taro.showModal({
-        title: '重置计时器？',
-        content: '当前正在进行中，确定要重置吗？',
-        confirmColor: '#1a9464',
-        success: (res) => {
-          if (res.confirm) {
-            if (intervalRef.current) clearInterval(intervalRef.current)
-            setRunning(false)
-            const m = mode === 'focus' ? settings.focusMin : mode === 'short' ? settings.shortMin : settings.longMin
-            setSeconds(m * 60)
-          }
-        },
-      })
-    } else {
-      const m = mode === 'focus' ? settings.focusMin : mode === 'short' ? settings.shortMin : settings.longMin
-      setSeconds(m * 60)
-    }
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    setRunning(false)
+    const m = mode === 'focus' ? settings.focusMin : mode === 'short' ? settings.shortMin : settings.longMin
+    setSeconds(m * 60)
   }
 
   function skipNext() {
@@ -169,245 +142,184 @@ const Pomodoro: React.FC = () => {
   const todayDone = completedDates[todayKey] ?? 0
   const goalPct = Math.min(100, Math.round((todayDone / Math.max(1, settings.dailyGoal)) * 100))
 
-  const colorClass =
-    mode === 'focus' ? 'text-rose-500 border-rose-200' :
-    mode === 'short' ? 'text-mint-600 border-mint-200' :
-    'text-indigo-500 border-indigo-200'
+  // 细圆环：conic-gradient 彩色进度 + 内白圆遮出环宽
+  const arc = Math.round(progress * 360)
+  const ringColor =
+    mode === 'focus' ? '#fb7185' :
+    mode === 'short' ? '#1a9464' : '#818cf8'
+  const ringGrad = `conic-gradient(${ringColor} 0deg ${arc}deg, #d9f5e8 ${arc}deg 360deg)`
 
   const bgBtnClass =
-    mode === 'focus' ? 'bg-gradient-to-br from-rose-500 to-rose-600' :
-    mode === 'short' ? 'bg-gradient-to-br from-mint-500 to-mint-700' :
-    'bg-gradient-to-br from-indigo-500 to-indigo-600'
+    mode === 'focus' ? 'bg-rose-500' :
+    mode === 'short' ? 'bg-mint-600' : 'bg-indigo-500'
 
-  const ringGrad =
-    mode === 'focus' ? 'conic-gradient(from 0deg, #fb7185 0% ' + (progress * 360) + 'deg, #fee2e2 ' + (progress * 360) + 'deg 360deg)' :
-    mode === 'short' ? 'conic-gradient(from 0deg, #1a9464 0% ' + (progress * 360) + 'deg, #d9f5e8 ' + (progress * 360) + 'deg 360deg)' :
-    'conic-gradient(from 0deg, #818cf8 0% ' + (progress * 360) + 'deg, #e0e7ff ' + (progress * 360) + 'deg 360deg)'
-
-  // 最近 7 天统计
-  const last7 = useMemo(() => {
-    const out: { date: string; count: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      out.push({ date: key.slice(5), count: completedDates[key] ?? 0 })
-    }
-    return out
-  }, [completedDates])
-
-  const maxBar = Math.max(1, ...last7.map((d) => d.count))
+  const modeMin = (m: Mode) =>
+    m === 'focus' ? settings.focusMin : m === 'short' ? settings.shortMin : settings.longMin
 
   return (
-    <View className="animate-fade-up pt-4 pb-8 px-4 flex flex-col gap-5">
+    <View className="animate-fade-up pt-4 pb-8 px-4 flex flex-col">
       {/* 模式切换 */}
-      <View className="rounded-2xl p-1 grid grid-cols-3 bg-mint-100 border border-mint-100 shadow-card">
+      <View className="flex p-1 rounded-2xl bg-white/80 border border-mint-100 shadow-card">
         {MODES.map((m) => {
           const active = mode === m.key
           return (
             <View
               key={m.key}
-              hoverClass="view-press"
+              hoverClass={running ? 'none' : 'view-press'}
               hoverStayTime="80"
               onClick={() => { if (!running) setMode(m.key) }}
-              className={`rounded-xl py-2.5 flex flex-col items-center ${active ? 'bg-white shadow-sm' : ''}`}
+              className={`flex-1 py-2.5 rounded-xl flex flex-col items-center transition-all ${active ? 'bg-mint-600 shadow-sm' : ''} ${running ? 'opacity-60' : ''}`}
             >
-              <Text className="text-base">{m.icon}</Text>
-              <Text className={`text-xs mt-0.5 font-semibold ${active ? 'text-mint-800' : 'text-mint-700/70'}`}>
-                {m.label}
+              <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-mint-800/70'}`}>{m.label}</Text>
+              <Text className={`text-[10px] mt-0.5 ${active ? 'text-white/90' : 'text-mint-700/50'}`}>
+                {modeMin(m.key)} 分钟
               </Text>
             </View>
           )
         })}
       </View>
 
-      {/* 圆形进度计时器 */}
-      <View className="rounded-3xl bg-white/80 border border-mint-100 shadow-card p-8 flex flex-col items-center">
-        <View
-          className={`relative w-72 h-72 rounded-full flex items-center justify-center border-4 ${colorClass}`}
-          style={{ background: ringGrad }}
-        >
-          <View className="w-64 h-64 rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
-            <Text className="text-xs text-mint-700/70 mb-1">
+      {/* 细圆环倒计时 */}
+      <View className="mt-8 flex justify-center">
+        <View className="relative w-72 h-72 rounded-full" style={{ background: ringGrad }}>
+          <View className="absolute inset-[6px] rounded-full bg-white flex flex-col items-center justify-center">
+            <Text className="text-xs text-mint-600 font-medium tracking-widest">
               {MODES.find((m) => m.key === mode)?.tip}
             </Text>
-            <Text className={`text-6xl font-bold tracking-tight ${mode === 'focus' ? 'text-rose-500' : mode === 'short' ? 'text-mint-600' : 'text-indigo-500'}`}>
-              {timeText}
+            <Text className="mt-2 text-6xl font-bold text-mint-900 tracking-tight">{timeText}</Text>
+            <Text className="mt-3 text-xs text-mint-700/70">
+              第 {todayDone + (running && mode === 'focus' ? 1 : 0)} 个 · 目标 {settings.dailyGoal} 个番茄
             </Text>
-            <Text className="text-xs text-mint-700/60 mt-2">
-              {running ? '进行中…' : '点击下方按钮开始'}
-            </Text>
-          </View>
-        </View>
-
-        {/* 操作按钮 */}
-        <View className="mt-6 flex items-center gap-3 w-full">
-          <View
-            hoverClass="view-press"
-            hoverStayTime="80"
-            onClick={resetTimer}
-            className="flex-1 py-3.5 rounded-2xl bg-white border border-mint-200 shadow-card flex items-center justify-center"
-          >
-            <Text className="text-mint-700 font-semibold">🔄 重置</Text>
-          </View>
-          <View
-            hoverClass="view-press"
-            hoverStayTime="80"
-            onClick={toggleRun}
-            className={`flex-[2] py-3.5 rounded-2xl ${bgBtnClass} shadow-soft flex items-center justify-center`}
-          >
-            <Text className="text-white font-bold text-lg">
-              {running ? '⏸ 暂停' : seconds === 0 ? '⏭ 完成' : '▶ 开始'}
-            </Text>
-          </View>
-          <View
-            hoverClass="view-press"
-            hoverStayTime="80"
-            onClick={skipNext}
-            className="flex-1 py-3.5 rounded-2xl bg-white border border-mint-200 shadow-card flex items-center justify-center"
-          >
-            <Text className="text-mint-700 font-semibold">⏭ 跳过</Text>
           </View>
         </View>
       </View>
 
-      {/* 今日统计 */}
-      <View className="rounded-2xl bg-white/80 border border-mint-100 shadow-card p-4">
-        <View className="flex items-center justify-between mb-3">
-          <Text className="text-sm font-semibold text-mint-800">📊 今日进度</Text>
-          <Text className="text-xs text-mint-700/60">
-            {todayDone} / {settings.dailyGoal} 番茄 · 累计 {totalFocus}
+      {/* 圆形控制按钮 */}
+      <View className="mt-6 flex items-center justify-center gap-4">
+        <View
+          hoverClass="view-press"
+          hoverStayTime="80"
+          onClick={resetTimer}
+          className="w-14 h-14 rounded-full bg-white border border-mint-100 shadow-card flex items-center justify-center"
+        >
+          <Text className="text-2xl text-mint-700 leading-none">↺</Text>
+        </View>
+        <View
+          hoverClass="view-press"
+          hoverStayTime="80"
+          onClick={toggleRun}
+          className={`w-20 h-20 rounded-full ${bgBtnClass} shadow-soft flex items-center justify-center`}
+        >
+          <Text className="text-4xl text-white leading-none">
+            {running ? '⏸' : '▶'}
           </Text>
         </View>
-        <View className="w-full h-3 rounded-full bg-mint-50 overflow-hidden">
-          <View
-            className="h-full rounded-full bg-gradient-to-r from-mint-400 to-mint-600 transition-all"
-            style={{ width: `${goalPct}%` }}
-          />
-        </View>
-
-        {/* 最近 7 天柱状图 */}
-        <View className="mt-4">
-          <Text className="text-xs text-mint-700/70 mb-2">最近 7 天</Text>
-          <View className="flex items-end justify-between gap-1 h-16">
-            {last7.map((d, i) => (
-              <View key={i} className="flex-1 flex flex-col items-center gap-1">
-                <Text className="text-[10px] text-mint-700/60">{d.count}</Text>
-                <View
-                  className="w-full rounded-t bg-gradient-to-t from-mint-500 to-mint-300"
-                  style={{ height: `${Math.max(4, (d.count / maxBar) * 48)}px` }}
-                />
-                <Text className="text-[10px] text-mint-700/60">{d.date}</Text>
-              </View>
-            ))}
-          </View>
+        <View
+          hoverClass="view-press"
+          hoverStayTime="80"
+          onClick={skipNext}
+          className="w-14 h-14 rounded-full bg-white border border-mint-100 shadow-card flex items-center justify-center"
+        >
+          <Text className="text-2xl text-mint-700 leading-none">⏭</Text>
         </View>
       </View>
 
-      {/* 设置按钮 */}
+      {/* 两栏统计 */}
+      <View className="mt-8 grid grid-cols-2 gap-3">
+        <View className="rounded-2xl p-4 bg-white/80 border border-mint-100 shadow-card">
+          <Text className="text-xs text-mint-700/70">今日番茄</Text>
+          <View className="mt-1 flex items-baseline gap-1">
+            <Text className="text-3xl font-bold text-mint-900">{todayDone}</Text>
+            <Text className="text-sm text-mint-700/60">/ {settings.dailyGoal}</Text>
+          </View>
+          <View className="mt-2 h-2 rounded-full bg-mint-100 overflow-hidden">
+            <View
+              className="h-full bg-gradient-to-r from-mint-500 to-mint-400"
+              style={{ width: `${goalPct}%` }}
+            />
+          </View>
+        </View>
+        <View className="rounded-2xl p-4 bg-white/80 border border-mint-100 shadow-card">
+          <Text className="text-xs text-mint-700/70">累计专注</Text>
+          <View className="mt-1 flex items-baseline gap-1">
+            <Text className="text-3xl font-bold text-mint-900">{totalFocus}</Text>
+            <Text className="text-sm text-mint-700/60">个番茄</Text>
+          </View>
+          <Text className="mt-2 text-xs text-mint-700/60">
+            ≈ {totalFocus * settings.focusMin} 分钟的认真时刻 🌟
+          </Text>
+        </View>
+      </View>
+
+      {/* 设置入口 */}
       <View
         hoverClass="view-press"
         hoverStayTime="80"
-        onClick={() => setShowSettings(!showSettings)}
-        className="rounded-2xl bg-white/70 border border-mint-100 shadow-card p-4 flex items-center justify-between"
+        onClick={() => setShowSettings((s) => !s)}
+        className="mt-4 w-full rounded-xl py-3 bg-mint-50/70 border border-mint-100 flex items-center justify-center gap-2"
       >
-        <Text className="text-sm font-semibold text-mint-800">⚙️ 时长设置</Text>
-        <Text className="text-xs text-mint-600">{showSettings ? '收起 ▲' : '展开 ▼'}</Text>
+        <Text className="text-sm text-mint-700">⚙️ 设置</Text>
       </View>
 
+      {/* 设置面板 */}
       {showSettings && (
-        <View className="rounded-2xl bg-white/80 border border-mint-100 shadow-card p-4 flex flex-col gap-4 animate-fade-up">
-          <SettingRow
-            label="🍅 专注时长"
-            unit="分钟"
-            value={settings.focusMin}
-            min={5}
-            max={60}
-            onChange={(v) => setSettings({ ...settings, focusMin: v })}
-          />
-          <SettingRow
-            label="☕ 短休息"
-            unit="分钟"
-            value={settings.shortMin}
-            min={1}
-            max={15}
-            onChange={(v) => setSettings({ ...settings, shortMin: v })}
-          />
-          <SettingRow
-            label="🌿 长休息"
-            unit="分钟"
-            value={settings.longMin}
-            min={10}
-            max={45}
-            onChange={(v) => setSettings({ ...settings, longMin: v })}
-          />
-          <SettingRow
-            label="🎯 每日目标"
-            unit="个"
-            value={settings.dailyGoal}
-            min={1}
-            max={20}
-            onChange={(v) => setSettings({ ...settings, dailyGoal: v })}
-          />
-          <View className="flex items-center justify-between pt-2 border-t border-mint-50">
-            <Text className="text-sm text-mint-800">🔔 提示音</Text>
-            <Switch
-              checked={settings.soundOn}
-              color="#1a9464"
-              onChange={(e) => setSettings({ ...settings, soundOn: e.detail.value })}
-            />
+        <View className="mt-4 p-4 rounded-2xl bg-white/90 border border-mint-100 shadow-card animate-fade-up flex flex-col gap-3">
+          <View className="grid grid-cols-3 gap-3">
+            <NumberField label="专注（分钟）" value={settings.focusMin} min={1} max={90}
+              onChange={(v) => setSettings({ ...settings, focusMin: v })} />
+            <NumberField label="短休息" value={settings.shortMin} min={1} max={60}
+              onChange={(v) => setSettings({ ...settings, shortMin: v })} />
+            <NumberField label="长休息" value={settings.longMin} min={1} max={60}
+              onChange={(v) => setSettings({ ...settings, longMin: v })} />
           </View>
-          <View className="flex items-center justify-between">
-            <Text className="text-sm text-mint-800">⏭ 自动切换下一阶段</Text>
-            <Switch
-              checked={settings.autoNext}
-              color="#1a9464"
-              onChange={(e) => setSettings({ ...settings, autoNext: e.detail.value })}
-            />
+          <View className="grid grid-cols-2 gap-3">
+            <NumberField label="每日目标（个）" value={settings.dailyGoal} min={1} max={30}
+              onChange={(v) => setSettings({ ...settings, dailyGoal: v })} />
+            <View className="flex items-center justify-between rounded-xl bg-mint-50/60 px-3 py-2 border border-mint-100">
+              <Text className="text-xs text-mint-800">提示音</Text>
+              <Toggle checked={settings.soundOn} onChange={(v) => setSettings({ ...settings, soundOn: v })} />
+            </View>
           </View>
+          <View className="flex items-center justify-between rounded-xl bg-mint-50/60 px-3 py-2 border border-mint-100">
+            <Text className="text-sm text-mint-800">自动进入下一阶段</Text>
+            <Toggle checked={settings.autoNext} onChange={(v) => setSettings({ ...settings, autoNext: v })} />
+          </View>
+          <Text className="text-[11px] text-mint-700/60">
+            * 每完成 4 个专注番茄后会自动进入长休息，其他时候进入短休息。
+          </Text>
         </View>
       )}
     </View>
   )
 }
 
-const SettingRow: React.FC<{
+const NumberField: React.FC<{
   label: string
-  unit: string
   value: number
   min: number
   max: number
-  onChange: (v: number) => void
-}> = ({ label, unit, value, min, max, onChange }) => (
-  <View>
-    <View className="flex items-center justify-between mb-1">
-      <Text className="text-sm text-mint-800">{label}</Text>
-      <Text className="text-sm font-semibold text-mint-700">{value} {unit}</Text>
-    </View>
-    <View className="flex items-center gap-2">
-      <View
-        hoverClass="view-press"
-        hoverStayTime="80"
-        onClick={() => onChange(Math.max(min, value - 1))}
-        className="w-8 h-8 rounded-full bg-mint-50 border border-mint-200 flex items-center justify-center"
-      >
-        <Text className="text-mint-700 text-lg leading-none">−</Text>
-      </View>
-      <View className="flex-1 h-1 rounded-full bg-mint-100 relative">
-        <View
-          className="h-full rounded-full bg-mint-500"
-          style={{ width: `${((value - min) / Math.max(1, max - min)) * 100}%` }}
-        />
-      </View>
-      <View
-        hoverClass="view-press"
-        hoverStayTime="80"
-        onClick={() => onChange(Math.min(max, value + 1))}
-        className="w-8 h-8 rounded-full bg-mint-50 border border-mint-200 flex items-center justify-center"
-      >
-        <Text className="text-mint-700 text-lg leading-none">+</Text>
-      </View>
-    </View>
+  onChange: (n: number) => void
+}> = ({ label, value, min, max, onChange }) => (
+  <View className="rounded-xl bg-mint-50/60 px-3 py-2 border border-mint-100">
+    <Text className="text-[11px] text-mint-700/80">{label}</Text>
+    <Input
+      type="number"
+      value={String(value)}
+      onInput={(e) => {
+        const n = parseInt(e.detail.value, 10)
+        if (isFinite(n)) onChange(Math.max(min, Math.min(max, n)))
+      }}
+      className="mt-0.5 w-full text-lg font-semibold text-mint-900"
+    />
+  </View>
+)
+
+const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
+  <View
+    onClick={() => onChange(!checked)}
+    className={`relative w-11 h-6 rounded-full transition-colors ${checked ? 'bg-mint-500' : 'bg-gray-300'}`}
+  >
+    <View className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
   </View>
 )
 

@@ -1,7 +1,14 @@
 /* 待办清单 */
-.todo-row {
-  transition: all 0.2s ease;
+
+/* 横向滚动行隐藏滚动条（微信默认不显示，H5 端生效） */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-.todo-row-active:active {
-  transform: scale(0.99);
+
+/* 浮层菜单：菜单项按压底色（hoverClass 机制） */
+.menu-press {
+  background-color: #effbf6;
+}
+.menu-press-rose {
+  background-color: #fff1f2;
 }

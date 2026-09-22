@@ -106,28 +106,38 @@ const Workdays: React.FC = () => {
     return 'work'
   }
 
+  const todayYmd = YMD(new Date())
   const rangeResult = useMemo(() => {
     if (!start || !end) return null
     let total = diffDays(start, end)
     let neg = false
     if (total < 0) { total = -total; neg = true }
     let work = 0, weekend = 0, hol = 0, makeup = 0
+    let remDays = 0, remWork = 0, remWeekend = 0, remHol = 0, remMakeup = 0
     for (let i = 0; i <= total; i++) {
       const d = addDays(start, neg ? -i : i)
-      if (holidaySet.has(d)) hol++
-      else if (makeupSet.has(d)) { makeup++; work++ }
-      else {
+      const isFuture = d > todayYmd // 未来日期（不含今天）计入剩余
+      if (holidaySet.has(d)) {
+        hol++
+        if (isFuture) remHol++
+      } else if (makeupSet.has(d)) {
+        makeup++; work++
+        if (isFuture) { remMakeup++; remWork++ }
+      } else {
         const rest = isRestDayByMode(d)
-        if (rest) weekend++; else work++
+        if (rest) { weekend++; if (isFuture) remWeekend++ }
+        else { work++; if (isFuture) remWork++ }
       }
+      if (isFuture) remDays++
     }
     return {
       realStart: neg ? end : start,
       realEnd:   neg ? start : end,
       total: total + 1,
       work, weekend, hol, makeup,
+      remDays, remWork, remWeekend, remHol, remMakeup,
     }
-  }, [start, end, workMode]) // eslint-disable-line
+  }, [start, end, workMode, todayYmd]) // eslint-disable-line
 
   // ====== Presets ======
   const thisWeek = () => {
@@ -158,7 +168,7 @@ const Workdays: React.FC = () => {
   return (
     <View className="animate-fade-up px-4 pt-4 pb-8 flex flex-col gap-5">
       {/* 工作模式 */}
-      <View className="rounded-2xl p-1 grid grid-cols-3 bg-mint-100 border border-mint-100 shadow-card">
+      <View className="rounded-2xl p-1 grid grid-cols-3 bg-mint-100/60 border border-mint-100 shadow-card">
         {(Object.keys(WM_LABEL) as WorkMode[]).map(k => (
           <View
             key={k}
@@ -179,7 +189,7 @@ const Workdays: React.FC = () => {
             <Text className="text-xs font-medium text-mint-700/80">开始日期</Text>
             <View className="mt-1">
               <Picker mode="date" value={start} onChange={e => setStart(e.detail.value)}>
-                <View className="w-full rounded-xl border border-mint-100 px-3 py-2 bg-mint-50/50">
+                <View className="w-full rounded-xl border border-mint-100 px-3 py-2 bg-white">
                   <Text className="text-sm text-mint-900">📅 {start}</Text>
                 </View>
               </Picker>
@@ -189,7 +199,7 @@ const Workdays: React.FC = () => {
             <Text className="text-xs font-medium text-mint-700/80">结束日期</Text>
             <View className="mt-1">
               <Picker mode="date" value={end} onChange={e => setEnd(e.detail.value)}>
-                <View className="w-full rounded-xl border border-mint-100 px-3 py-2 bg-mint-50/50">
+                <View className="w-full rounded-xl border border-mint-100 px-3 py-2 bg-white">
                   <Text className="text-sm text-mint-900">📅 {end}</Text>
                 </View>
               </Picker>
@@ -218,16 +228,16 @@ const Workdays: React.FC = () => {
 
         {rangeResult && (
           <View className="flex flex-col gap-2 pt-1">
-            <View className="grid grid-cols-2 gap-2">
-              <Stat label="总天数"    value={rangeResult.total}   color="bg-mint-50" text="text-mint-800" />
-              <Stat label="工作日 📗" value={rangeResult.work}    color="bg-emerald-50" text="text-emerald-800" />
-              <Stat label="周末"      value={rangeResult.weekend} color="bg-sky-50" text="text-sky-800" />
-              <Stat label="法定假 🎋" value={rangeResult.hol}     color="bg-rose-50" text="text-rose-800" />
-              <Stat label="调休补班"  value={rangeResult.makeup}  color="bg-amber-50" text="text-amber-800" />
+            <View className="grid grid-cols-2 gap-2 pt-1">
+              <Stat label="总天数"    value={rangeResult.total}   rem={rangeResult.remDays}    color="bg-mint-50" text="text-mint-800" />
+              <Stat label="工作日 📗" value={rangeResult.work}    rem={rangeResult.remWork}    color="bg-emerald-50" text="text-emerald-800" />
+              <Stat label="周末"      value={rangeResult.weekend} rem={rangeResult.remWeekend} color="bg-sky-50" text="text-sky-800" />
+              <Stat label="法定假 🎋" value={rangeResult.hol}     rem={rangeResult.remHol}     color="bg-rose-50" text="text-rose-800" />
+              <Stat label="调休补班"  value={rangeResult.makeup}  rem={rangeResult.remMakeup}  color="bg-amber-50" text="text-amber-800" />
             </View>
-            <View className="text-xs text-mint-700/70 bg-mint-50 border border-mint-100 rounded-xl px-3 py-2 leading-relaxed">
+            <View className="text-xs text-mint-700/70 bg-mint-50/60 border border-mint-100 rounded-xl px-3 py-2 leading-relaxed">
               <Text>
-                📆 {rangeResult.realStart} → {rangeResult.realEnd}，共 {rangeResult.total} 天，模式 {WM_LABEL[workMode]}，实际上班 {rangeResult.work} 天
+                📆 {rangeResult.realStart} → {rangeResult.realEnd}，共 {rangeResult.total} 天（剩 {rangeResult.remDays} 天），模式 {WM_LABEL[workMode]}，实际上班 {rangeResult.work} 天（剩 {rangeResult.remWork} 天）
                 {rangeResult.makeup > 0 ? `（含 ${rangeResult.makeup} 个周末调休补班日）` : ''}
               </Text>
             </View>
@@ -263,10 +273,13 @@ const Workdays: React.FC = () => {
 }
 
 // ============ helpers ============
-const Stat: React.FC<{ label: string; value: number | string; color: string; text: string }> = ({ label, value, color, text }) => (
+const Stat: React.FC<{ label: string; value: number | string; rem: number; color: string; text: string }> = ({ label, value, rem, color, text }) => (
   <View className={`rounded-xl px-3 py-3 ${color} shadow-sm`}>
-    <Text className="text-[10px] opacity-75 font-medium">{label}</Text>
-    <Text className={`block text-xl font-bold mt-1 ${text}`}>{value}</Text>
+    <Text className="block text-[10px] opacity-75 font-medium">{label}</Text>
+    <View className="mt-1 flex items-baseline">
+      <Text className={`text-xl font-bold leading-none ${text}`}>{value}</Text>
+      <Text className={`text-sm opacity-60 leading-none ${text}`}>/{rem}</Text>
+    </View>
   </View>
 )
 

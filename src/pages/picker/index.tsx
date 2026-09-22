@@ -184,7 +184,7 @@ const Picker: React.FC = () => {
               hoverClass="view-press"
               hoverStayTime="80"
               onClick={() => usePreset(p.id)}
-              className={`rounded-2xl p-3 border bg-white/90 shadow-card ${active ? 'border-mint-500' : 'border-mint-100'}`}
+              className={`rounded-2xl p-3 border bg-white/90 shadow-card ${active ? 'border-mint-500 ring-2 ring-mint-300/50' : 'border-mint-100'}`}
             >
               <Text className="block text-2xl leading-none">{p.icon}</Text>
               <Text className={`block mt-2 text-sm font-semibold ${active ? 'text-mint-700' : 'text-mint-900'}`}>{p.name}</Text>
@@ -320,7 +320,7 @@ const Picker: React.FC = () => {
       {history.length > 0 && (
         <View className="mt-6">
           <View className="flex items-center justify-between mb-2">
-            <Text className="text-sm font-semibold text-mint-800">� 最近抽取记录</Text>
+            <Text className="text-sm font-semibold text-mint-800">📜 最近抽取记录</Text>
             <View hoverClass="view-press" hoverStayTime="80" onClick={clearHistory}>
               <Text className="text-[11px] text-mint-500">清空</Text>
             </View>
